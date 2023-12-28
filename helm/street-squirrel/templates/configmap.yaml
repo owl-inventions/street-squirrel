@@ -1,0 +1,10 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: {{ include "street-squirrel.shortName" . }}-config
+data:
+  postgresHost: "{{ .Values.configs.postgresHost }}"
+  postgresDatabase: "{{ .Values.configs.postgresDatabase }}"
+  postgresUser: "{{ .Values.configs.postgresUser }}"
+  valhallaUrl: "{{ .Values.configs.valhallaUrl }}"
+  version: "{{ .Values.configs.version }}"
