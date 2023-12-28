@@ -1,0 +1,81 @@
+name: staging-ci
+on:
+  push:
+    branches:
+        - main
+
+concurrency:
+  group: staging-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  DOCKER:
+    runs-on: self-hosted
+    container:
+      image: catthehacker/ubuntu:act-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+        with:
+          mask-password: 'true'
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+            push: true
+            tags: ${{ vars.AWS_REGISTRY }}/street-squirrel:staging-${{ github.sha }}
+            platforms: linux/arm64
+            file: Dockerfile
+  HELM:
+    runs-on: self-hosted
+    needs: DOCKER
+    container:
+      image: catthehacker/ubuntu:act-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: install helm
+      run: |
+        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        chmod 700 get_helm.sh
+        ./get_helm.sh
+        mkdir -p ~/.kube
+    - name: setup helm
+      env:
+        KUBE_CONFIG_BASE64: ${{ secrets.KUBE_CONFIG_BASE64 }}
+      run: |
+        echo "$KUBE_CONFIG_BASE64" | base64 -d > ~/.kube/config
+        cat ~/.kube/config
+        chmod 0600 ~/.kube/config
+        helm version --kubeconfig ~/.kube/config
+    - name: deploy to k3s-kube
+      env:
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        POSTGRES_DATABASE: ${{ vars.POSTGRES_DATABASE }}
+        POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+        POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      run: |
+        helm upgrade \
+          --kubeconfig ~/.kube/config \
+          --namespace streetwise-test \
+          --install \
+          -f helm/dev.values.yaml \
+          --set ingress.host=staging.streetwise-api.kube.jnhssg.de \
+          --set image.repository=${{ vars.AWS_REGISTRY }}/street-squirrel \
+          --set image.tag=staging-${{ github.sha }} \
+          --set configs.version=staging-${{ github.sha }} \
+          --set configs.postgresHost="${POSTGRES_HOST}" \
+          --set configs.postgresDatabase="${POSTGRES_DATABASE}" \
+          --set configs.postgresUser="${POSTGRES_USER}" \
+          --set configs.valhallaUrl=${{ vars.VALHALLA_URL }} \
+          --set secrets.postgresPassword="${POSTGRES_PASSWORD}" \
+          street-squirrel-staging ./helm/street-squirrel/
