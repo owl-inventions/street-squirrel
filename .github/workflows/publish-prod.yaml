@@ -1,8 +1,12 @@
-name: production-ci
+name: staging-ci
 on:
   push:
     tags:
       - "**"
+
+concurrency:
+  group: staging-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   DOCKER:
@@ -25,63 +29,48 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
         with:
           mask-password: 'true'
-      - name: Set Tag as Env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Build and Push
-        run: |
-          docker buildx build --platform linux/arm64 -t ${{ vars.AWS_REGISTRY }}/adv-2023:production-$RELEASE_VERSION -f docker/Dockerfile . --push
-
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          tags: ${{ vars.AWS_REGISTRY }}/street-squirrel:production-${{ github.sha }}
+          platforms: linux/arm64
+          file: Dockerfile
   HELM:
     runs-on: self-hosted
     needs: DOCKER
     container:
       image: catthehacker/ubuntu:act-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set Tag as Env
-      run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-    - name: install helm
-      run: |
-        curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-        chmod 700 get_helm.sh
-        ./get_helm.sh
-        mkdir -p ~/.kube
-    - name: setup helm
-      env:
-        KUBE_CONFIG_BASE64: ${{ secrets.KUBE_CONFIG_BASE64_PRODUCTION }}
-      run: |
-        echo "$KUBE_CONFIG_BASE64" | base64 -d > ~/.kube/config
-        cat ~/.kube/config
-        chmod 0600 ~/.kube/config
-        helm version --kubeconfig ~/.kube/config
-    - name: deploy to k3s-kube
-      env:
-        AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME }}
-        AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_DATABASE: ${{ vars.POSTGRES_DATABASE }}
-        POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
-        POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      run: |
-        helm upgrade \
-          --kubeconfig ~/.kube/config \
-          --namespace adv-2023 \
-          --install \
-          -f helm/prod.values.yaml \
-          --set ingress.host=adv-2023.jnhssg.de \
-          --set image.repository=${{ vars.AWS_REGISTRY }}/adv-2023 \
-          --set image.tag=production-$RELEASE_VERSION \
-          --set configs.version="${RELEASE_VERSION}" \
-          --set configs.postgresHost="${POSTGRES_HOST}" \
-          --set configs.postgresDatabase="${POSTGRES_DATABASE}" \
-          --set configs.postgresUser="${POSTGRES_USER}" \
-          --set secrets.postgresPassword="${POSTGRES_PASSWORD}" \
-          --set secrets.jwtSecret="${JWT_SECRET}" \
-          --set configs.awsStorageBucketName="${AWS_STORAGE_BUCKET_NAME}" \
-          --set configs.awsS3Region="${AWS_S3_REGION_NAME}" \
-          --set secrets.awsAccessKeyId="${AWS_ACCESS_KEY_ID}" \
-          --set secrets.awsSecretAccessKey="${AWS_SECRET_ACCESS_KEY}" \
-          adv-2023-production ./helm/adv-2023/
+      - uses: actions/checkout@v3
+      - name: install helm
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+          mkdir -p ~/.kube
+      - name: setup helm
+        env:
+          KUBE_CONFIG_BASE64_PRODUCTION: ${{ secrets.KUBE_CONFIG_BASE64_PRODUCTION }}
+        run: |
+          echo "KUBE_CONFIG_BASE64_PRODUCTION" | base64 -d > ~/.kube/config
+          cat ~/.kube/config
+          chmod 0600 ~/.kube/config
+          helm version --kubeconfig ~/.kube/config
+      - name: deploy to k3s
+        run: |
+          helm upgrade \
+            --kubeconfig ~/.kube/config \
+            --namespace streetwise \
+            --install \
+            -f helm/prod.values.yaml \
+            --set ingress.host=streetwise-api.kube.jnhssg.de \
+            --set image.repository=${{ vars.AWS_REGISTRY }}/street-squirrel \
+            --set image.tag=staging-${{ github.sha }} \
+            --set configs.version=production-${{ github.sha }} \
+            --set configs.postgresHost=${{ vars.POSTGRES_HOST }} \
+            --set configs.postgresDatabase=${{ vars.POSTGRES_DATABASE }} \
+            --set configs.postgresUser=${{ vars.POSTGRES_USER }} \
+            --set configs.valhallaUrl=${{ vars.VALHALLA_URL }} \
+            --set secrets.postgresPassword=${{ secrets.POSTGRES_PASSWORD }} \
+            street-squirrel-production ./helm/street-squirrel/
