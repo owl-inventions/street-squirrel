@@ -48,6 +48,9 @@ jobs:
       image: catthehacker/ubuntu:act-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Get version
+        id: get_version
+        run: echo version=${GITHUB_REF#refs/tags/} >> $GITHUB_OUTPUT
       - name: install helm
         run: |
           curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -71,8 +74,8 @@ jobs:
             -f helm/prod.values.yaml \
             --set ingress.host=streetwise-api.kube.jnhssg.de \
             --set image.repository=${{ vars.AWS_REGISTRY }}/street-squirrel \
-            --set image.tag=staging-${{ steps.get_version.outputs.version }} \
-            --set configs.version=production-${{ github.sha }} \
+            --set image.tag=production-${{ steps.get_version.outputs.version }} \
+            --set configs.version=${{ steps.get_version.outputs.version }} \
             --set configs.postgresHost=${{ vars.POSTGRES_HOST }} \
             --set configs.postgresDatabase=${{ vars.POSTGRES_DATABASE }} \
             --set configs.postgresUser=${{ vars.POSTGRES_USER }} \

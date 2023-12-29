@@ -24,11 +24,40 @@ export enum TransportMode {
   Pedestrian = 'pedestrian',
 }
 
-export enum PoiCategory {
-  Supermarket = 'supermarket',
-  Pharmacy = 'pharmacy',
-  Bakery = 'bakery',
-}
+export const PoiCategory: Array<string> = [
+  'bakery',
+  'beverages',
+  'bus_stop',
+  'cafe',
+  'chemist',
+  'cinema',
+  'dentist',
+  'doctors',
+  'doityourself',
+  'fire_station',
+  'fitness_centre',
+  'florist',
+  'fuel',
+  'health_food',
+  'hospital',
+  'kindergarten',
+  'library',
+  'marketplace',
+  'optician',
+  'parcel_locker',
+  'pet',
+  'pharmacy',
+  'playground',
+  'police',
+  'pub',
+  'restaurant',
+  'school',
+  'supermarket',
+  'theatre',
+  'townhall',
+  'tram_stop',
+  'university',
+];
 
 export class GetPoiCoverageDto {
   @ApiProperty({
@@ -50,14 +79,14 @@ export class GetPoiCoverageDto {
     default: ['supermarket', 'pharmacy'],
   })
   @IsEnum(PoiCategory, { each: true })
-  poi: Array<PoiCategory>;
+  poi: typeof PoiCategory;
   @ApiProperty({
     description: 'The list of transportation modes.',
     example: 'bicycle',
     default: 'bicycle',
     enum: TransportMode,
   })
-  @IsIn(TransportMode[Symbol.hasInstance], { each: true })
+  @IsEnum(TransportMode, { each: true })
   transportation: ValhallaCostingType;
 }
 
@@ -67,7 +96,7 @@ export class PoiWithScore {
   type: string;
   @IsNumber()
   @IsNotEmpty()
-  avgDuration: number;
+  duration: number;
   @IsString()
   @IsNotEmpty()
   unit: string;

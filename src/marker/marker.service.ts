@@ -45,7 +45,7 @@ export class MarkerService {
     @Query() getPoiCoverageDto: GetPoiCoverageDto,
   ): Promise<GetPoiCoverageResponseDto> {
     const { lat, lng } = getPoiCoverageDto;
-    const poiTypes: Array<PoiCategory> = getPoiCoverageDto.poi;
+    const poiTypes: typeof PoiCategory = getPoiCoverageDto.poi;
     const center: Point = { type: 'Point', coordinates: [lat, lng] };
     const isochroneSlots: Array<number> = [5, 10, 15, 20, 25, 30]; // minutes
     const isochrones: Array<
@@ -121,7 +121,7 @@ export class MarkerService {
       });
       const poiWithScore: PoiWithScore = {
         type: poiType,
-        avgDuration: Number((sum / poiS.length).toFixed(2)),
+        duration: Number((sum / poiS.length).toFixed(2)),
         unit: 'minutes',
         quantity: poiS.length,
       };
