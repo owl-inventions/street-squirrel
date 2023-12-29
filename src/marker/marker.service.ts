@@ -46,6 +46,7 @@ export class MarkerService {
   ): Promise<GetPoiCoverageResponseDto> {
     const { lat, lng } = getPoiCoverageDto;
     const poiTypes: typeof PoiCategory = getPoiCoverageDto.poi;
+    console.log(typeof poiTypes);
     const center: Point = { type: 'Point', coordinates: [lat, lng] };
     const isochroneSlots: Array<number> = [5, 10, 15, 20, 25, 30]; // minutes
     const isochrones: Array<
@@ -141,6 +142,7 @@ export class MarkerService {
     poiTypes: Array<string>,
   ): Promise<Map<string, Array<Feature>>> {
     const poiSAtIsochrones: Map<string, Array<Feature>> = new Map();
+    console.log(typeof poiTypes);
     poiTypes.forEach((poiType) => {
       poiSAtIsochrones.set(poiType, []);
     });

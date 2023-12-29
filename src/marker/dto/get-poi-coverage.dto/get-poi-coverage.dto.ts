@@ -61,27 +61,28 @@ export const PoiCategory: Array<string> = [
 
 export class GetPoiCoverageDto {
   @ApiProperty({
-    description: 'The latitude of a location.',
+    description: 'latitude of location',
     example: 54.08,
   })
   @IsLatitude()
   lat: number;
   @ApiProperty({
-    description: 'The latitude of a location.',
+    description: 'longitude of location',
     example: 12.13,
   })
   @IsLongitude()
   lng: number;
   @ApiProperty({
-    description: 'The list of POI categories, seperated by comma',
+    description: 'list of point of interests (at least two)',
     enum: PoiCategory,
     isArray: true,
     default: ['supermarket', 'pharmacy'],
   })
-  @IsEnum(PoiCategory, { each: true })
+  @IsIn(PoiCategory, { each: true })
+  @IsArray()
   poi: typeof PoiCategory;
   @ApiProperty({
-    description: 'The list of transportation modes.',
+    description: 'transportation mode',
     example: 'bicycle',
     default: 'bicycle',
     enum: TransportMode,
