@@ -8,7 +8,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 imagePullSecrets:
-  - name: "registry-jnhssg-net-registrycreds"
+  - name: "registry-jnhssg-de-registrycreds"
   - name: "ecr-registrycreds"
 
 image:

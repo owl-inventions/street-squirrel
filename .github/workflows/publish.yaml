@@ -18,22 +18,17 @@ jobs:
         uses: actions/checkout@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: login to docker registry
+        uses: docker/login-action@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-        with:
-          mask-password: 'true'
+          registry: registry.jnhssg.de
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build and Push
         uses: docker/build-push-action@v4
         with:
             push: true
-            tags: ${{ vars.AWS_REGISTRY }}/street-squirrel:staging-${{ github.sha }}
+            tags: registry.jnhssg.de/street-squirrel:staging-${{ github.sha }}
             platforms: linux/arm64
             file: Dockerfile
   HELM:
@@ -65,7 +60,7 @@ jobs:
           --install \
           -f helm/dev.values.yaml \
           --set ingress.host=staging.streetwise-api.kube.jnhssg.de \
-          --set image.repository=${{ vars.AWS_REGISTRY }}/street-squirrel \
+          --set image.repository=registry.jnhssg.de/street-squirrel \
           --set image.tag=staging-${{ github.sha }} \
           --set configs.version=staging-${{ github.sha }} \
           --set configs.postgresHost=${{ vars.POSTGRES_HOST }} \
